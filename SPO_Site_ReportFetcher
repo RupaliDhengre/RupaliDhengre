@@ -1,0 +1,80 @@
+#$SPOAdminSiteUrl="https://testsite-admin.sharepoint.com" 
+#Write-Host "Connecting to SPO Admin Site: " 
+#Connect-SPOService -Url $SPOAdminSiteUrl 
+Connect-AzureAD 
+##Create an excel file with the list of the SPO site URLs, column name: URL
+##Copy the patf of the input csv file in below line.
+$a=Import-csv -Path "C:\Users\Desktop\Scripts\Owner\input.csv"
+foreach($test in $a) 
+{ 
+#$test1=Get-SPOSite -identity $test.URL |Select Url,GroupId,Template,LastContentModifiedDate,SharingCapability,StorageUsageCurrent,DenyAddAndCustomizePages,IsHubSite,StorageQuota,Owner,Title 
+#check if site is Group connected or not 
+$test1=Get-SPOSite -identity $test.url |Select Url,GroupId,Template,LastContentModifiedDate,SharingCapability,StorageUsageCurrent,DenyAddAndCustomizePages,IsHubSite,StorageQuota,Owner,Title 
+if ($test1.Template -eq "GROUP#0") 
+{ 
+
+$OwnerDetails=(Get-AzureADGroupOwner -ObjectId $test1.GroupId|Select -ExpandProperty UserPrincipalName) -join "," 
+$CompanyDetails=(Get-AzureADGroupOwner -ObjectId $test1.GroupId|Select -ExpandProperty CompanyName) -join "," 
+$DepartmentDetails=(Get-AzureADGroupOwner -ObjectId $test1.GroupId|Select -ExpandProperty Department) -join "," 
+$TeamsEnabled=Get-Unifiedgroup -Identity $test1.GroupId.Guid | Select ResourceProvisioningOptions 
+$Teamsenabled2=if ($TeamsEnabled.ResourceProvisioningOptions -match "Team") {'YES'} else {'NO'} 
+$userObj = New-Object PSObject 
+$userObj | Add-Member NoteProperty -Name "URL" -Value $test1.Url 
+$userObj | Add-Member NoteProperty -Name "Name" -Value $test1.Title 
+$userObj | Add-Member NoteProperty -Name "TeamsEnabled" -Value $Teamsenabled2 
+$userObj | Add-Member NoteProperty -Name "DenyAddAndCustomizePages" -Value $test1.DenyAddAndCustomizePages 
+$userObj | Add-Member NoteProperty -Name "Branch" -Value $CompanyDetails 
+#$userObj | Add-Member NoteProperty -Name "Department" -Value $DepartmentDetails 
+$userObj | Add-Member NoteProperty -Name "Site Primary Admins Email" -Value $OwnerDetails 
+$userObj | Add-Member NoteProperty -Name "LastContentModifiedDate" -Value $test1.LastContentModifiedDate 
+$userObj | Add-Member NoteProperty -Name "SharingCapability" -Value $test1.SharingCapability 
+$userObj | Add-Member NoteProperty -Name "StorageQuota" -Value $test1.StorageQuota 
+$userObj | Add-Member NoteProperty -Name "StorageUsageCurrent" -Value $test1.StorageUsageCurrent 
+$userObj | Add-Member NoteProperty -Name "IsHubSite" -Value $test1.IsHubSite 
+$userObj | Add-Member NoteProperty -Name "Template" -Value $test1.Template 
+$userObj | Add-Member NoteProperty -Name "M365 Group" -Value "YES" 
+Write-Output $Userobj 
+$Userobj | Export-CSV -Path "C:\Users\Desktop\Scripts\Owner\\Output.csv" -Append -Force 
+} 
+if( $test1.Template -ne "GROUP#0") 
+{ 
+
+$SiteadminDetails=(Get-SpoUser -Site $test1.Url -Limit All| where{$_.IsSiteAdmin -eq $True} | Select -ExpandProperty LoginName) -join "," 
+##$CompanyDetails=(Get-AzureADUser -Filter "UserPrincipalName eq '$SiteadminDetails2_.LoginName'" |Select -ExpandProperty CompanyName) -join "," 
+##$SiteadminDetails3=Get-SpoUser -Site $test1.Url -Limit All| where{$_.IsSiteAdmin -eq $True} | Select LoginName 
+##$DepartmentDetails=(Get-AzureADUser -SearchString $SiteadminDetails3.LoginName |Select -ExpandProperty Department) -join "," 
+##$DepartmentDetails=(Get-AzureADUser -Filter "UserPrincipalName eq '$SiteadminDetails2.LoginName'" |Select-Object -ExpandProperty Department) -join "," 
+$SiteadminDetails2=Get-SpoUser -Site $test1.Url -Limit All| where{$_.IsSiteAdmin -eq $True} | Select LoginName 
+ForEach($LG in $SiteadminDetails2 ) 
+{ 
+$Department=Get-AzureADUser -ObjectId $a.LoginName |Select Department 
+$CompanyName=Get-AzureADUser -ObjectId $a.LoginName |Select CompanyName 
+} 
+##Object Creation
+$userObj1 = New-Object PSObject 
+
+## Adding the members in the object userObj1
+$userObj1 | Add-Member NoteProperty -Name "URL" -Value $test1.Url 
+$userObj1 | Add-Member NoteProperty -Name "Name" -Value $test1.Title 
+$userObj1 | Add-Member NoteProperty -Name "DenyAddAndCustomizePages" -Value $test1.DenyAddAndCustomizePages 
+$userObj1 | Add-Member NoteProperty -Name "Branch" -Value $CompanyName  
+$userObj1 | Add-Member NoteProperty -Name "Department" -Value $Department 
+$userObj1 | Add-Member NoteProperty -Name "Site Primary Admins Email" -Value $SiteadminDetails 
+$userObj1 | Add-Member NoteProperty -Name "LastContentModifiedDate" -Value $test1.LastContentModifiedDate 
+$userObj1 | Add-Member NoteProperty -Name "SharingCapability" -Value $test1.SharingCapability 
+$userObj1 | Add-Member NoteProperty -Name "StorageQuota" -Value $test1.StorageQuota 
+$userObj1 | Add-Member NoteProperty -Name "StorageUsageCurrent" -Value $test1.StorageUsageCurrent 
+$userObj1 | Add-Member NoteProperty -Name "IsHubSite" -Value $test1.IsHubSite 
+$userObj1 | Add-Member NoteProperty -Name "Template" -Value $test1.Template 
+$userObj1 | Add-Member NoteProperty -Name "M365 Group" -Value "NO" 
+
+##Display current Object Value.
+Write-Output $Userobj1 
+
+##Final Report will be explorted on below mentioned path in the Output.csv file.
+
+$Userobj1 | Export-CSV -Path "C:\Users\Desktop\Scripts\Owner\\Output.csv" -Append -Force 
+
+Clear-Item Variable:Userobj1 
+} 
+} 
