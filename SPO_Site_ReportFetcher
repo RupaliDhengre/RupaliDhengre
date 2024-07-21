@@ -1,6 +1,6 @@
-#$SPOAdminSiteUrl="https://testsite-admin.sharepoint.com" 
-#Write-Host "Connecting to SPO Admin Site: " 
-#Connect-SPOService -Url $SPOAdminSiteUrl 
+$SPOAdminSiteUrl="https://testsite-admin.sharepoint.com" 
+Write-Host "Connecting to SPO Admin Site: " 
+Connect-SPOService -Url $SPOAdminSiteUrl 
 Connect-AzureAD 
 ##Create an excel file with the list of the SPO site URLs, column name: URL
 ##Copy the patf of the input csv file in below line.
